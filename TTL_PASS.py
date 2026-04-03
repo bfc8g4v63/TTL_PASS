@@ -116,6 +116,20 @@ def disable_ipv6_by_desc(description):
     ps=f"Get-NetAdapterBinding | Where-Object {{$_.InterfaceDescription -eq '{description}' -and $_.ComponentID -eq 'ms_tcpip6'}} | Disable-NetAdapterBinding -PassThru"
     return run_ps(ps)
 
+def set_dns_by_name(adapter_name):
+    if not adapter_name:
+        return 1, "", "無效介面"
+
+    cmd1 = f'netsh interface ip set dns name="{adapter_name}" static 1.1.1.1 primary'
+    cmd2 = f'netsh interface ip add dns name="{adapter_name}" 1.0.0.1 index=2'
+
+    code1, out1, err1 = run_cmd(cmd1, use_locale=True)
+    code2, out2, err2 = run_cmd(cmd2, use_locale=True)
+
+    if code1 == 0 and code2 == 0:
+        return 0, "DNS 設定完成", ""
+    return 1, out1 + out2, err1 + err2
+
 def wait_at_end():
     try:
         input("\n按 Enter 結束")
@@ -145,8 +159,12 @@ def main():
         print("未偵測到可用連線介面")
     else:
         print(f"已偵測到介面: {name}")
+
         code, out, err = disable_ipv6_by_desc(desc)
-        print("連線介面已完成優化設定" if code==0 else "優化設定未完全套用")
+        print("IPv6 已優化" if code==0 else "IPv6 設定未完全套用")
+
+        code, out, err = set_dns_by_name(name)
+        print("DNS 已設定 (1.1.1.1 / 1.0.0.1)" if code==0 else "DNS 設定失敗")
 
     wait_at_end()
 
